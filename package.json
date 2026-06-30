@@ -1,0 +1,22 @@
+{
+  "name": "doc-templates",
+  "version": "1.0.0",
+  "description": "公共案件向け 要件定義・技術設計ドキュメントテンプレート（Markdown正本 → HTML自動生成）",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "render:diagrams": "node scripts/render-mermaid.mjs",
+    "export:docx": "node scripts/export-docx.mjs"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@turbodocx/html-to-docx": "^1.13.0",
+    "js-yaml": "^4.1.0",
+    "markdown-it": "^14.1.0",
+    "markdown-it-anchor": "^9.2.0"
+  },
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^11.15.0"
+  }
+}
