@@ -1,7 +1,7 @@
 ---
 title: シカクル API設計書（MVP）
 doc_id: API-SKR-001
-version: 1.0.0
+version: 1.1.0
 status: review
 project: シカクル（検定マーケティングプラットフォーム）
 author: プロダクトマネージャー / テクニカルアーキテクト
@@ -75,6 +75,10 @@ sequenceDiagram
 | DATA-101 | (SDK) | `exams` insert/update | 検定作成・公開（RLS） | 要 | F-0101/0102 | Supabaseクライアント |
 | DATA-201 | (SDK) | `public_questions` select | 出題取得（正解なし） | 任意 | F-0201 | Supabaseクライアント |
 | DATA-104 | (SDK) | `attempts`/`exams` select | ダッシュボード集計 | 要 | F-0104 | Supabaseクライアント |
+| API-303 | POST | `/api/badge/checkout` | バッジ発行料(R3・¥200)決済 | 要 | F-5006 | `api/badge/checkout/route.ts` |
+| EXT-JOB-1 | (IF) | 求人サイト連携 | 合格者×求職者の送客 | 各社 | F-5008 | §10 |
+| EXT-ATS-1 | (IF) | ATS連携API | 合格資格を選考へ | OAuth | F-7003 | §10 |
+| EXT-VERIFY-1 | GET | `/verify/:credentialId` | 資格の第三者検証（公開） | 不要 | ⑥ | §10 |
 
 ## 5. API詳細：API-301 受験料決済セッション作成
 
@@ -166,6 +170,44 @@ sequenceDiagram
 | 受験履歴・ダッシュボード | attempts / exams | 本人 or 当該作成者 |
 | イベント記録 | events | 挿入のみ |
 
+## 9. API詳細：API-303 デジタルバッジ発行料決済（R3）
+
+要件 1.5・SR-007。掲載料/受験手数料を取らない検定（大手等）で、**合格時に受験者へバッジ発行料¥200/回**を課金する。
+
+| 項目 | 内容 |
+|------|------|
+| メソッド / パス | `POST /api/badge/checkout` |
+| 概要 | 合格した attempt に対しバッジ発行料のStripe Checkoutを作成 |
+| 認証・認可 | 要（本人）。対象検定が `monetization='badge_fee'` かつ当該 attempt が `passed=true` |
+| カード情報 | 非保持（Stripeトークン化・SAQ-A） |
+
+**リクエスト**
+```json
+{ "attemptId": "..." }
+```
+**レスポンス（200）**
+```json
+{ "url": "https://checkout.stripe.com/c/pay/cs_..." }
+```
+**処理**：`metadata` に attempt_id / exam_id / user_id / badge_fee_yen(=200) を格納。決済完了Webhook（API-901拡張）で `attempts.badge_fee_yen` を記録し、合格証（OB/VC）発行をトリガー（⑥）。
+**エラー**：401 未認証／400 対象外検定・未合格・二重発行。
+
+## 10. 外部インターフェース（採用連携）
+
+要件 SR-009 / CR-006。受験者の初期集客と「検証者（採用担当）」への接続。
+
+| IF-ID | 連携先 | 方向 | 方式 | 概要 | 認証 |
+|-------|--------|------|------|------|------|
+| EXT-JOB-1 | 求人サイト（リクナビ/マイナビ/ビズリーチ 等） | 送信/受信 | 各社API or フィード | 合格者×求職者の送客・求人掲載連携 | 各社OAuth/APIキー（KMS管理） |
+| EXT-ATS-1 | ATS（採用管理システム） | 送信 | REST/Webhook | 応募者の**合格資格（VC/OB）**を選考データへ連携。候補者の検証可能スキルを提示 | OAuth2.0 / APIキー |
+| EXT-VERIFY-1 | 第三者検証（採用担当・他サービス） | 受信 | 公開エンドポイント | `GET /verify/:credentialId` で proof/hash を返し真偽検証（**個人情報は最小化**） | 不要（公開） |
+
+### 10.1 設計方針
+- 外部APIの資格情報（トークン）は **DBに平文保存せず KMS/Secrets**（要件S5）。
+- 連携で送る個人情報は**最小限・利用目的の明示・同意・記録**（個人情報保護法）。
+- ATS連携で提示するのは**検証可能クレデンシャル（VC/OB3.0）**。改ざん不可・第三者検証可能（CRED-SKR-001）。
+- 具体的なフィールドマッピング（求人ID・候補者ID・資格ID等）は連携先確定後に別紙で定義。
+
 ---
 
 ## 改訂履歴
@@ -173,3 +215,4 @@ sequenceDiagram
 | 版 | 日付 | 改訂者 | 内容 |
 |----|------|--------|------|
 | 1.0.0 | 2026-07-05 | PM/アーキテクト | シカクルMVP API設計 初版作成（実装Route Handlerと整合） |
+| 1.1.0 | 2026-07-05 | PM/アーキテクト | 投資家資料反映：§9 バッジ発行料API(R3/API-303)、§10 外部IF（求人/ATS/公開検証）を追加 |
