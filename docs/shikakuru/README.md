@@ -29,6 +29,13 @@ updated: 2026-07-04
 | FNL-SKR-001 | [機能一覧](./機能一覧.md) | MVPの全機能をMust/Should/Couldで一覧化 |
 | NFR-SKR-001 | [非機能要件定義書](./非機能要件定義書.md) | 性能・可用性・運用・セキュリティ（妥協ラインを明示） |
 | SEC-SKR-001 | [セキュリティ要件定義書](./セキュリティ要件定義書.md) | OWASP Top 10:2025・PCI DSS・個人情報保護法に準拠した最低ライン |
+| BD-SKR-001 | [基本設計書](./基本設計書.md) | 全体構造・機能・画面・データ・外部連携の設計方針 |
+| ARC-SKR-001 | [システム構成図](./システム構成図.md) | 論理/物理構成・主要データフロー・環境分離 |
+| SCT-SKR-001 | [画面遷移図](./画面遷移図.md) | 画面間遷移・遷移契機・共通ルール |
+| DB-SKR-001 | [DB設計書](./DB設計書.md) | ER図・テーブル定義・RLS・採点RPC（`shikakuru`の`schema.sql`と整合） |
+| API-SKR-001 | [API設計書](./API設計書.md) | Route Handler(BFF)・Webhook・RPC・RLSアクセス（実装と整合） |
+
+> 実装リポジトリ: **[tsunagibito/shikakuru](https://github.com/TSUNAGIBITO/shikakuru)**（Next.js 16 + Supabase + Stripe のMVPスキャフォールド）。設計書は同リポジトリの実コードと整合しています。
 
 ### MVPの技術スタック（結論）
 `Next.js 16 + TypeScript` / `Vercel` / `Supabase(Postgres+Storage)` / `Clerk もしくは Supabase Auth` / `Stripe（Checkout/Billing/Connect）` / `Sentry + PostHog`
