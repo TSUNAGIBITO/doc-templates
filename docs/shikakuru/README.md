@@ -34,6 +34,7 @@ updated: 2026-07-04
 | SCT-SKR-001 | [画面遷移図](./画面遷移図.md) | 画面間遷移・遷移契機・共通ルール |
 | DB-SKR-001 | [DB設計書](./DB設計書.md) | ER図・テーブル定義・RLS・採点RPC（`shikakuru`の`schema.sql`と整合） |
 | API-SKR-001 | [API設計書](./API設計書.md) | Route Handler(BFF)・Webhook・RPC・RLSアクセス（実装と整合） |
+| CRED-SKR-001 | [デジタル資格発行仕様メモ](./デジタル資格発行仕様メモ.md) | 将来構想の技術メモ：DID/VC/Open Badges 3.0/JPKI（序章＝この構成で叶うこと） |
 
 > 実装リポジトリ: **[tsunagibito/shikakuru](https://github.com/TSUNAGIBITO/shikakuru)**（Next.js 16 + Supabase + Stripe のMVPスキャフォールド）。設計書は同リポジトリの実コードと整合しています。
 
