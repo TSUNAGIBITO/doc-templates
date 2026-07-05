@@ -1,7 +1,7 @@
 ---
 title: シカクル DB設計書（ER図・テーブル定義）
 doc_id: DB-SKR-001
-version: 1.0.0
+version: 1.1.0
 status: review
 project: シカクル（検定マーケティングプラットフォーム）
 author: プロダクトマネージャー / テクニカルアーキテクト
@@ -209,6 +209,78 @@ erDiagram
 | 保管 | 監査ログ相当（決済/認証）は1年以上（NFR-SKR-001） |
 | バックアップ | Supabase自動バックアップ。Proで Point-in-Time Recovery を検討 |
 
+## 10. VC-ready データモデル（将来構想・要件定義⑥）
+
+将来の「本人確認済み検証可能資格（W3C Verifiable Credentials / Open Badges 3.0）」に備え、
+**MVP時点から合格証を正規化して蓄積**しておく（後付けは高利の負債になるため）。
+MVPでは「自社署名の合格証」までを実装し、VC発行・DID・本人確認・アンカリングはM2以降で有効化する。
+
+> 原則（要件6.3）：**個人番号は保存しない**。**個人データは公開チェーンに載せない**（チェーンにはハッシュ/失効のみ・任意）。
+
+### 10.1 追加テーブル（雛形）
+
+**issuers（発行者）** — 検定発行主体。将来はDIDを持つ。
+| No | 物理名 | 型 | NULL | 説明 |
+|----|--------|----|------|------|
+| 1 | id | uuid | NO | PK |
+| 2 | profile_id | uuid | NO | FK profiles.id（作成者） |
+| 3 | display_name | text | NO | 発行者表示名 |
+| 4 | did | text | YES | 発行者DID（M2以降。例 did:web:） |
+| 5 | signing_key_ref | text | YES | 署名鍵の参照（KMS等。秘密鍵はDBに置かない） |
+| 6 | created_at | timestamptz | NO | now() |
+
+**credentials（合格証／クレデンシャル）** — 1受験の合格に対して1件発行。
+| No | 物理名 | 型 | NULL | 説明 |
+|----|--------|----|------|------|
+| 1 | id | uuid | NO | PK |
+| 2 | attempt_id | uuid | NO | FK attempts.id（発行の根拠） |
+| 3 | exam_id | uuid | NO | FK exams.id |
+| 4 | issuer_id | uuid | NO | FK issuers.id |
+| 5 | subject_id | uuid | YES | FK profiles.id（被発行者。匿名受験時はnull） |
+| 6 | format | text | NO | 'self-signed'（MVP）/ 'openbadge-3.0' / 'w3c-vc-2.0' |
+| 7 | claims | jsonb | NO | 表示用クレーム（検定名・スコア・合格日など。**機微情報や個人番号は入れない**） |
+| 8 | payload | jsonb | YES | VC/OpenBadge本体（M2以降） |
+| 9 | proof | jsonb | YES | 署名（発行者鍵によるproof） |
+| 10 | content_hash | text | YES | payloadのハッシュ（検証・任意のアンカリング用） |
+| 11 | identity_verified | boolean | NO | 本人確認済みか（JPKI連携時true・M3） default false |
+| 12 | issued_at | timestamptz | NO | 発行日時 |
+| 13 | revoked_at | timestamptz | YES | 失効日時（NULL=有効） |
+
+**revocations（失効レジストリ）** — Bitstring Status List 等に対応。
+| No | 物理名 | 型 | NULL | 説明 |
+|----|--------|----|------|------|
+| 1 | id | uuid | NO | PK |
+| 2 | credential_id | uuid | NO | FK credentials.id |
+| 3 | reason | text | YES | 失効理由 |
+| 4 | status_list_index | int | YES | ステータスリスト上の位置（M2以降） |
+| 5 | created_at | timestamptz | NO | now() |
+
+**anchors（オンチェーン・アンカリング／任意・最終段階）** — PIIは載せず、ハッシュのみ。
+| No | 物理名 | 型 | NULL | 説明 |
+|----|--------|----|------|------|
+| 1 | id | uuid | NO | PK |
+| 2 | credential_id | uuid | NO | FK credentials.id |
+| 3 | merkle_root | text | NO | バッチのMerkle root（個票ハッシュではなく集約） |
+| 4 | chain | text | NO | 台帳識別（例: 'polygon'） |
+| 5 | tx_ref | text | YES | トランザクション参照 |
+| 6 | anchored_at | timestamptz | NO | now() |
+
+### 10.2 発行フロー（合格→クレデンシャル）
+```mermaid
+flowchart LR
+  A[score_attempt: 合格判定] --> B{passed?}
+  B -->|yes| C[credentials 発行<br/>format=self-signed]
+  C --> D[claims/proof/content_hash 記録]
+  D --> E[検証ページ /verify/:id で第三者検証]
+  C -. M2 .-> F[Open Badges 3.0 / W3C VC 化]
+  F -. M3 .-> G[JPKI本人確認で identity_verified=true]
+  F -. 任意 .-> H[anchors: Merkle rootを台帳へ]
+```
+
+### 10.3 RLS方針（追加）
+- credentials：被発行者本人・発行者（作成者）は参照可。**検証は公開エンドポイント**（proof/hashのみ返し、個人情報は最小化）。
+- issuers/revocations/anchors：発行者本人＝参照、更新は service_role / 発行処理。
+
 ---
 
 ## 改訂履歴
@@ -216,3 +288,4 @@ erDiagram
 | 版 | 日付 | 改訂者 | 内容 |
 |----|------|--------|------|
 | 1.0.0 | 2026-07-05 | PM/アーキテクト | シカクルMVP DB設計 初版作成（schema.sqlと整合） |
+| 1.1.0 | 2026-07-05 | PM/アーキテクト | §10「VC-readyデータモデル（将来構想）」追加：issuers/credentials/revocations/anchors 雛形と発行フロー。個人番号非保持・PIIオフチェーン原則を明記 |
