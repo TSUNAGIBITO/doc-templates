@@ -1,7 +1,7 @@
 ---
 title: シカクル DB設計書（ER図・テーブル定義）
 doc_id: DB-SKR-001
-version: 1.1.0
+version: 1.2.0
 status: review
 project: シカクル（検定マーケティングプラットフォーム）
 author: プロダクトマネージャー / テクニカルアーキテクト
@@ -281,6 +281,41 @@ flowchart LR
 - credentials：被発行者本人・発行者（作成者）は参照可。**検証は公開エンドポイント**（proof/hashのみ返し、個人情報は最小化）。
 - issuers/revocations/anchors：発行者本人＝参照、更新は service_role / 発行処理。
 
+## 11. 収益モデル・認定階層・4ステークホルダー対応（投資家資料反映）
+
+要件定義 1.5（収益3本柱・認定/未認定）と4ステークホルダーに対応するスキーマ差分。
+
+### 11.1 既存テーブルへの追加カラム
+**exams（検定）に追加**
+| 物理名 | 型 | 既定 | 説明 |
+|--------|----|------|------|
+| certified | boolean | false | **認定資格=true / 未認定=false**（要件1.5） |
+| certified_at | timestamptz | null | 認定日時 |
+| monetization | text | 'transaction' | 収益方式：'transaction'(受験料20%) / 'badge_fee'(¥200/回) / 'free' |
+
+**attempts（受験）に追加**
+| 物理名 | 型 | 既定 | 説明 |
+|--------|----|------|------|
+| badge_fee_yen | int | 0 | R3：デジタルバッジ発行料（¥200/回等） |
+
+**profiles.role（enum user_role）に値を追加**
+- 既存 `user / creator / admin` に **`exam_org`（試験運営団体）** と **`agency`（広告代理店）** を追加。
+- `agency` は卸値（リセラー）プライシング、`exam_org` はオンライン試験配信・採点機能の対象。
+
+### 11.2 新規テーブル（Phase 1〜2で追加）
+| テーブル | 用途 |
+|----------|------|
+| `certifications` | 認定審査の申請・承認履歴（exam_id・審査者・状態・日時） |
+| `recruit_integrations` | 求人サイト/ATS連携設定（provider='rikunavi/mynavi/bizreach/ats'・API資格情報の参照はKMS・作成者/企業単位） |
+| `agency_accounts` | 広告代理店アカウント・卸値レート・担当クライアント |
+| `exam_org_delivery` | 試験運営団体向け：オンライン試験配信・採点ジョブ（既存試験のデジタル移行） |
+
+> 収益方式(`monetization`)により決済フローが分岐：`transaction`→受験料決済(FR-007)＋20%控除、`badge_fee`→合格時に¥200のバッジ発行課金、`free`→無料。
+
+### 11.3 ATS/求人連携の注意
+- 外部APIの資格情報（トークン）は**DBに平文保存せずKMS/Secrets**で管理（要件S5）。
+- 送客・連携する個人情報は**最小限・利用目的の明示・同意**（個人情報保護法）。
+
 ---
 
 ## 改訂履歴
@@ -289,3 +324,4 @@ flowchart LR
 |----|------|--------|------|
 | 1.0.0 | 2026-07-05 | PM/アーキテクト | シカクルMVP DB設計 初版作成（schema.sqlと整合） |
 | 1.1.0 | 2026-07-05 | PM/アーキテクト | §10「VC-readyデータモデル（将来構想）」追加：issuers/credentials/revocations/anchors 雛形と発行フロー。個人番号非保持・PIIオフチェーン原則を明記 |
+| 1.2.0 | 2026-07-05 | PM/アーキテクト | §11追加：収益3本柱・認定/未認定(exams.certified,monetization)・R3バッジ発行料(attempts.badge_fee_yen)・4ステークホルダー(role拡張)・求人/ATS/代理店/試験配信テーブル |
