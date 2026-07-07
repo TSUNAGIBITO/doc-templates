@@ -70,6 +70,22 @@ npm run render:diagrams              # 全 .md の ```mermaid を PNG 化
   `executablePath` を実行環境に合わせて変更してください。
 - `npm run export:docx` は未生成の図を自動描画して .docx に画像として埋め込みます（`--no-diagrams` で無効化）。
 
+### 単一ファイルを .docx 化する（docs/ 外も可）
+
+```bash
+npm run docx:one -- <input.md> <output.docx>
+```
+
+`docs/` 配下に限定されない汎用変換。提案書・内部メモなど、納品ドキュメント群と分けて管理したいファイルの Word 化に使えます。
+
+### 限定公開する（Basic 認証・任意）
+
+Vercel 等にデプロイして **認証を通した人だけに閲覧**させたい場合、同梱の `middleware.js`（Vercel Edge Middleware）を使います。
+
+- 既定は**無効**（環境変数が無ければ通常公開）。
+- Vercel のプロジェクト環境変数に `BASIC_AUTH_USER` / `BASIC_AUTH_PASS` を設定すると Basic 認証が有効化されます。
+- 守秘が必要な案件データを、検索・一般公開せず関係者限定で共有する用途に。
+
 ## frontmatter 仕様
 
 | キー | 説明 | 例 |

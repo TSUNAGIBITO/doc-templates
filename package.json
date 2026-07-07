@@ -7,7 +7,8 @@
     "build": "node scripts/build.mjs",
     "watch": "node scripts/build.mjs --watch",
     "render:diagrams": "node scripts/render-mermaid.mjs",
-    "export:docx": "node scripts/export-docx.mjs"
+    "export:docx": "node scripts/export-docx.mjs",
+    "docx:one": "node scripts/convert-md-docx.mjs"
   },
   "license": "MIT",
   "dependencies": {
