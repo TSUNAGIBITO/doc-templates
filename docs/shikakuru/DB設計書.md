@@ -1,7 +1,7 @@
 ---
 title: シカクル DB設計書（ER図・テーブル定義）
 doc_id: DB-SKR-001
-version: 1.3.0
+version: 1.3.1
 status: review
 project: シカクル（検定マーケティングプラットフォーム）
 author: プロダクトマネージャー / テクニカルアーキテクト
@@ -310,10 +310,10 @@ flowchart LR
 | `agency_accounts` | 広告代理店アカウント・卸値レート・担当クライアント |
 | `exam_org_delivery` | 試験運営団体向け：オンライン試験配信・採点ジョブ（既存試験のデジタル移行） |
 | `affiliate_links` | アフィリエイト紹介リンク（influencer_id・exam_id・slug・報酬率） |
-| `affiliate_rewards` | 紹介経由の受験に対する報酬（attempt_id・influencer_id・amount_yen・payout状態）。**自社費用としてStripe Connectで送金**（要件3.5・CR-010） |
+| `affiliate_rewards` | 紹介経由の受験に対する報酬（attempt_id・influencer_id・amount_yen・payout状態）。**受験料の10%（H-1確定・¥600→¥60）を自社費用としてStripe Connectで送金**（要件3.5・CR-010） |
 
 > 収益方式(`monetization`)により決済フローが分岐：`transaction`→受験料決済(FR-007)＋20%控除、`badge_fee`→合格時に¥200のバッジ発行課金、`free`→無料。
-> アフィリエイト報酬は受験者資金の再分配ではなく**プラットフォームの取り分（費用）から支払う**構成とする（資金決済法・要件3.5）。「10%の分母」は H-1 で確定。
+> アフィリエイト報酬は受験者資金の再分配ではなく**プラットフォームの取り分（費用）から支払う**構成とする（資金決済法・要件3.5）。料率は**受験料の10%**（H-1確定）。
 
 ### 11.3 ATS/求人連携の注意
 - 外部APIの資格情報（トークン）は**DBに平文保存せずKMS/Secrets**で管理（要件S5）。
@@ -329,3 +329,4 @@ flowchart LR
 | 1.1.0 | 2026-07-05 | PM/アーキテクト | §10「VC-readyデータモデル（将来構想）」追加：issuers/credentials/revocations/anchors 雛形と発行フロー。個人番号非保持・PIIオフチェーン原則を明記 |
 | 1.2.0 | 2026-07-05 | PM/アーキテクト | §11追加：収益3本柱・認定/未認定(exams.certified,monetization)・R3バッジ発行料(attempts.badge_fee_yen)・4ステークホルダー(role拡張)・求人/ATS/代理店/試験配信テーブル |
 | 1.3.0 | 2026-07-05 | PM/アーキテクト | §11.2にアフィリエイト(affiliate_links/affiliate_rewards)を追加。自社費用構成を明記 |
+| 1.3.1 | 2026-07-05 | PM/アーキテクト | アフィリエイト料率を受験料の10%（H-1確定）に明記 |
