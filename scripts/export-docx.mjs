@@ -84,6 +84,26 @@ async function walk(dir) {
   return out;
 }
 
+// 本文の表（markdown 由来）に罫線を付ける。th/td/table にインライン枠線を注入。
+function borderizeTables(html) {
+  return html
+    .replace(/<table>/g, '<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;width:100%;">')
+    .replace(/<th>/g, '<th style="border:1px solid #555;padding:3px 6px;background:#eef1f6;text-align:left;">')
+    .replace(/<th style="/g, '<th style="border:1px solid #555;padding:3px 6px;background:#eef1f6;')
+    .replace(/<td>/g, '<td style="border:1px solid #555;padding:3px 6px;vertical-align:top;">')
+    .replace(/<td style="/g, '<td style="border:1px solid #555;padding:3px 6px;vertical-align:top;');
+}
+
+// 本文中で最大の列数を数える（<tr> 内の <td>/<th> 数の最大）。
+function maxColumns(html) {
+  let max = 0;
+  for (const m of html.matchAll(/<tr>([\s\S]*?)<\/tr>/g)) {
+    const c = (m[1].match(/<t[dh][ >]/g) || []).length;
+    if (c > max) max = c;
+  }
+  return max;
+}
+
 async function main() {
   const sub = process.argv[2] ? join(ROOT, process.argv[2]) : SRC;
   if (!existsSync(sub)) { console.error('対象が見つかりません:', sub); process.exit(1); }
@@ -95,14 +115,25 @@ async function main() {
     const { meta, body } = parseFrontmatter(raw);
     const title = meta.title || file.split(sep).pop().replace(/\.md$/, '');
     const bodyWithImages = await inlineMermaid(body);
+    const rendered = md.render(bodyWithImages);
+    const cols = maxColumns(rendered);
+    // 列数が多い表を含む文書は横向き＋小さめフォント＋余白縮小（日本語の1文字縦積みを防ぐ）
+    const wide = cols >= 6;
+    const contentHtml = borderizeTables(rendered);
     const html = `<!doctype html><html><head><meta charset="utf-8"></head><body>
 <h1>${md.utils.escapeHtml(title)}</h1>
 ${metaTable(meta)}
-${md.render(bodyWithImages)}
+${contentHtml}
 </body></html>`;
 
     const buffer = await HTMLtoDOCX(html, null, {
       title,
+      orientation: wide ? 'landscape' : 'portrait',
+      margins: wide
+        ? { top: 720, right: 540, bottom: 720, left: 540 }
+        : { top: 1134, right: 1134, bottom: 1134, left: 1134 },
+      font: 'Yu Gothic',
+      fontSize: wide ? 16 : 20, // half-points（wide=8pt / 通常=10pt）
       table: { row: { cantSplit: true } },
       footer: false,
       pageNumber: false,
